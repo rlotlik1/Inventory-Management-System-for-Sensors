@@ -67,7 +67,7 @@ class Sensors {
     const sensorData = validate('addSensorData', info);
     if(this.SensorMap.has(sensorData.sensorId))
     {
-    this.SensorDataMap.set(sensorData.id,sensorData);
+    this.SensorDataMap.set(sensorData.sensorId,sensorData);
     }
     console.log(this.SensorDataMap.values());
     //@TODO
@@ -212,25 +212,32 @@ class Sensors {
 
     var detail=searchSpecs.doDetail;
     
-    var detailArray=new Map;
+    var detailArray=new Array();
     var ref=0;
+    
+   
+    //console.log(outputArray);
+    for(var i in outputArray)
+    {
+    var model1=outputArray[i].model;
+    
     if(detail==="true")
     {
-      if(this.SensorTypeMap.has(searchSpecs.id))
-      {
-        console.log("Inside second");
+    if(this.SensorTypeMap.has(model1))
+    {
       ref=1;
-      detailArray.set(searchSpecs.id,this.SensorTypeMap.get(searchSpecs.id));
-      }
+      detailArray.push(model1);
+      
     }
-    console.log(detailArray);
+    }
+    }
 
     var json = {};
     json["nextIndex"] = indexCount;
     json["data"] = outputArray;
     if(ref===1)
     {
-      json["Sensor-type"]=detailArray;
+      json["Sensor-type id"]=detailArray;
     }
     //console.log(JSON.stringify(json, null, "  "));
     return json;
@@ -288,16 +295,14 @@ class Sensors {
       count = 1;
       tempMap = new Map();
       if(this.SensorDataMap.get(searchSpecs.sensorId)!=null)
-        tempMap.set(searchSpecs.id, this.SensorDataMap.get(searchSpecs.sensorId));
+        tempMap.set(searchSpecs.sensorId, this.SensorDataMap.get(searchSpecs.sensorId));
     } else
         tempMap = this.SensorDataMap;
-    var indexCount = 0;
+    
     for (let [k, v] of tempMap) {
       if(count===0)
         break;
-      if(indexCount>=searchSpecs.index)
-      {  
-        indexCount++;
+      
         var flag = 0;
         for(var ex in example)
         {
@@ -309,13 +314,38 @@ class Sensors {
           outputArray.push(v);
           count--;
         }
-      }
+      
     }
-    if (indexCount >= this.SensorDataMap.size) 
-      indexCount = -1;
+    var detail=searchSpecs.doDetail;
+    
+    var detailArray=new Array();
+    var ref=0;
+    
+   
+    //console.log(outputArray);
+    for(var i in outputArray)
+    {
+    var sensorId1=outputArray[i].sensorId;
+    
+    if(detail==="true")
+    {
+    if(this.SensorMap.has(sensorId1))
+    {
+
+      ref=1;
+      detailArray.push(sensorId1);
+      
+    }
+    }
+    }
+    
     var json = {};
-    json["nextIndex"] = indexCount;
+    
     json["data"] = outputArray;
+    if(ref===1)
+    {
+      json["Sensor id"]=detailArray;
+    }
     return json;
   }
   
