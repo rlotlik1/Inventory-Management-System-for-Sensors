@@ -2,14 +2,26 @@
 
 const assert = require('assert');
 
+var SensorTypeMap;
+var SensorDataMap;
+var SensorMap;
+
 class Sensors {
 
   constructor() {
+    
+    this.SensorTypeMap=new Map();
+    this.SensorDataMap=new Map();
+    this.SensorMap=new Map();
+    this.clear();
     //@TODO
   }
 
   /** Clear out all data from this object. */
   async clear() {
+    this.SensorTypeMap.clear();
+    this.SensorDataMap.clear();
+    this.SensorMap.clear();
     //@TODO
   }
 
@@ -21,6 +33,9 @@ class Sensors {
    */
   async addSensorType(info) {
     const sensorType = validate('addSensorType', info);
+    this.SensorTypeMap.set(sensorType.id,sensorType)
+    console.log(this.SensorTypeMap.values());
+    
     //@TODO
   }
   
@@ -32,6 +47,12 @@ class Sensors {
    */
   async addSensor(info) {
     const sensor = validate('addSensor', info);
+    if(this.SensorTypeMap.has(sensor.model))
+    {
+    this.SensorMap.set(sensor.id,sensor);
+    }
+    console.log(this.SensorMap.values());
+
     //@TODO
   }
 
@@ -44,6 +65,11 @@ class Sensors {
    */
   async addSensorData(info) {
     const sensorData = validate('addSensorData', info);
+    if(this.SensorMap.has(sensorData.sensorId))
+    {
+    this.SensorDataMap.set(sensorData.id,sensorData);
+    }
+    console.log(this.SensorDataMap.values());
     //@TODO
   }
 
@@ -70,8 +96,49 @@ class Sensors {
    */
   async findSensorTypes(info) {
     const searchSpecs = validate('findSensorTypes', info);
-    //@TODO
-    return {};
+    var example = {};
+    var outputArray = new Array();
+    for (var key in searchSpecs) {
+      if (!(key === "id" || key === "index" || key === "count")) {
+        example[key] = searchSpecs[key];
+      }
+    }
+    var count = searchSpecs.count;
+    var tempMap;
+    if (searchSpecs.id != null) {
+      count = 1;
+      tempMap = new Map();
+      if(this.SensorTypeMap.get(searchSpecs.id)!=null)
+        tempMap.set(searchSpecs.id, this.SensorTypeMap.get(searchSpecs.id));
+    } else
+        tempMap = this.SensorTypeMap;
+    var indexCount = 0;
+    for (let [k, v] of tempMap) {
+      if(count===0)
+        break;
+      if(indexCount>=searchSpecs.index)
+      {  
+        indexCount++;
+        var flag = 0;
+        for(var ex in example)
+        {
+          if(v[ex] != example[ex])
+            flag=1;
+        }
+        if(flag==0)
+        {
+          outputArray.push(v);
+          count--;
+        }
+      }
+    }
+    if (indexCount >= this.SensorTypeMap.size) 
+      indexCount = -1;
+    var json = {};
+    json["nextIndex"] = indexCount;
+    json["data"] = outputArray;
+    //console.log(JSON.stringify(json, null, "  "));
+    return json;
   }
   
   /** Subject to validation of search-parameters in info as per
@@ -101,8 +168,72 @@ class Sensors {
    */
   async findSensors(info) {
     const searchSpecs = validate('findSensors', info);
-    //@TODO
-    return {};
+    console.log(searchSpecs);
+    var example = {};
+    var outputArray = new Array();
+    for (var key in searchSpecs) {
+      if (!(key === "id" || key === "index" || key === "count" || key === "doDetail")) {
+        example[key] = searchSpecs[key];
+      }
+    }
+
+    
+    var count = searchSpecs.count;
+    var tempMap;
+    if (searchSpecs.id != null) {
+      count = 1;
+      tempMap = new Map();
+      if(this.SensorMap.get(searchSpecs.id)!=null)
+        tempMap.set(searchSpecs.id, this.SensorMap.get(searchSpecs.id));
+    } else
+        tempMap = this.SensorMap;
+    var indexCount = 0;
+    for (let [k, v] of tempMap) {
+      if(count===0)
+        break;
+      if(indexCount>=searchSpecs.index)
+      {  
+        indexCount++;
+        var flag = 0;
+        for(var ex in example)
+        {
+          if(v[ex] != example[ex])
+            flag=1;
+        }
+        if(flag==0)
+        {
+          outputArray.push(v);
+          count--;
+        }
+      }
+    }
+    if (indexCount >= this.SensorMap.size) 
+    {indexCount = -1;}
+
+    var detail=searchSpecs.doDetail;
+    
+    var detailArray=new Map;
+    var ref=0;
+    if(detail==="true")
+    {
+      if(this.SensorTypeMap.has(searchSpecs.id))
+      {
+        console.log("Inside second");
+      ref=1;
+      detailArray.set(searchSpecs.id,this.SensorTypeMap.get(searchSpecs.id));
+      }
+    }
+    console.log(detailArray);
+
+    var json = {};
+    json["nextIndex"] = indexCount;
+    json["data"] = outputArray;
+    if(ref===1)
+    {
+      json["Sensor-type"]=detailArray;
+    }
+    //console.log(JSON.stringify(json, null, "  "));
+    return json;
   }
   
   /** Subject to validation of search-parameters in info as per
@@ -143,7 +274,49 @@ class Sensors {
   async findSensorData(info) {
     const searchSpecs = validate('findSensorData', info);
     //@TODO
-    return {};
+    console.log(searchSpecs);
+    var example = {};
+    var outputArray = new Array();
+    for (var key in searchSpecs) {
+      if (!(key === "timestamp" || key === "statuses" || key === "count" || key === "value" || key === "doDetail")) {
+        example[key] = searchSpecs[key];
+      }
+    }
+    var count = searchSpecs.count;
+    var tempMap;
+    if (searchSpecs.sensorId != null) {
+      count = 1;
+      tempMap = new Map();
+      if(this.SensorDataMap.get(searchSpecs.sensorId)!=null)
+        tempMap.set(searchSpecs.id, this.SensorDataMap.get(searchSpecs.sensorId));
+    } else
+        tempMap = this.SensorDataMap;
+    var indexCount = 0;
+    for (let [k, v] of tempMap) {
+      if(count===0)
+        break;
+      if(indexCount>=searchSpecs.index)
+      {  
+        indexCount++;
+        var flag = 0;
+        for(var ex in example)
+        {
+          if(v[ex] != example[ex])
+            flag=1;
+        }
+        if(flag==0)
+        {
+          outputArray.push(v);
+          count--;
+        }
+      }
+    }
+    if (indexCount >= this.SensorDataMap.size) 
+      indexCount = -1;
+    var json = {};
+    json["nextIndex"] = indexCount;
+    json["data"] = outputArray;
+    return json;
   }
   
   
@@ -362,3 +535,4 @@ const FN_INFOS = {
     max: { type: 'number' },
   },
 };  
+
