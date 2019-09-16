@@ -47,6 +47,7 @@ class Sensors {
    */
   async addSensor(info) {
     const sensor = validate('addSensor', info);
+   
     if(this.SensorTypeMap.has(sensor.model))
     {
     this.SensorMap.set(sensor.id,sensor);
@@ -67,9 +68,17 @@ class Sensors {
     const sensorData = validate('addSensorData', info);
     if(this.SensorMap.has(sensorData.sensorId))
     {
-    this.SensorDataMap.set(sensorData.id,sensorData);
+    if(this.SensorDataMap.has(sensorData.sensorId))
+    {
+      var DataArray=this.SensorDataMap.get(sensorData.sensorId);
+      DataArray.push(sensorData);
     }
-    console.log(this.SensorDataMap.values());
+    else{
+      var DataArray=new Array(sensorData);
+      this.SensorDataMap.set(sensorData.sensorId,DataArray);
+    }
+  }
+    //console.log(this.SensorDataMap.values());
     //@TODO
   }
 
@@ -103,15 +112,17 @@ class Sensors {
         example[key] = searchSpecs[key];
       }
     }
+    var SortTypeMap=new Map([...this.SensorTypeMap.entries()].sort());
+    
     var count = searchSpecs.count;
     var tempMap;
     if (searchSpecs.id != null) {
       count = 1;
       tempMap = new Map();
-      if(this.SensorTypeMap.get(searchSpecs.id)!=null)
-        tempMap.set(searchSpecs.id, this.SensorTypeMap.get(searchSpecs.id));
+      if(SortTypeMap.get(searchSpecs.id)!=null)
+        tempMap.set(searchSpecs.id, SortTypeMap.get(searchSpecs.id));
     } else
-        tempMap = this.SensorTypeMap;
+        tempMap = SortTypeMap;
     var indexCount = 0;
     for (let [k, v] of tempMap) {
       if(count===0)
@@ -132,11 +143,11 @@ class Sensors {
         }
       }
     }
-    if (indexCount >= this.SensorTypeMap.size) 
+    if (indexCount >= SortTypeMap.size) 
       indexCount = -1;
     var json = {};
-    json["nextIndex"] = indexCount;
-    json["data"] = outputArray;
+    json.nextIndex = indexCount;
+    json.data = outputArray;
     //console.log(JSON.stringify(json, null, "  "));
     return json;
   }
@@ -177,16 +188,17 @@ class Sensors {
       }
     }
 
+    var SortMap=new Map([...this.SensorMap.entries()].sort());
     
     var count = searchSpecs.count;
     var tempMap;
     if (searchSpecs.id != null) {
       count = 1;
       tempMap = new Map();
-      if(this.SensorMap.get(searchSpecs.id)!=null)
-        tempMap.set(searchSpecs.id, this.SensorMap.get(searchSpecs.id));
+      if(SortMap.get(searchSpecs.id)!=null)
+        tempMap.set(searchSpecs.id, SortMap.get(searchSpecs.id));
     } else
-        tempMap = this.SensorMap;
+        tempMap = SortMap;
     var indexCount = 0;
     for (let [k, v] of tempMap) {
       if(count===0)
@@ -207,30 +219,21 @@ class Sensors {
         }
       }
     }
-    if (indexCount >= this.SensorMap.size) 
+    if (indexCount >= SortMap.size) 
     {indexCount = -1;}
 
     var detail=searchSpecs.doDetail;
     
-    var detailArray=new Map;
-    var ref=0;
-    if(detail==="true")
-    {
-      if(this.SensorTypeMap.has(searchSpecs.id))
-      {
-        console.log("Inside second");
-      ref=1;
-      detailArray.set(searchSpecs.id,this.SensorTypeMap.get(searchSpecs.id));
-      }
-    }
-    console.log(detailArray);
+   
+    //console.log(outputArray);
 
     var json = {};
-    json["nextIndex"] = indexCount;
-    json["data"] = outputArray;
-    if(ref===1)
+    json.nextIndex = indexCount;
+    json.data = outputArray;
+
+    if(searchSpecs.id!=null && detail==="true")
     {
-      json["Sensor-type"]=detailArray;
+      json.sensorType = this.SensorTypeMap.get(this.SensorMap.get(searchSpecs.id).model);
     }
     //console.log(JSON.stringify(json, null, "  "));
     return json;
@@ -274,55 +277,67 @@ class Sensors {
   async findSensorData(info) {
     const searchSpecs = validate('findSensorData', info);
     //@TODO
-    console.log(searchSpecs);
-    var example = {};
-    var outputArray = new Array();
-    for (var key in searchSpecs) {
-      if (!(key === "timestamp" || key === "statuses" || key === "count" || key === "value" || key === "doDetail")) {
-        example[key] = searchSpecs[key];
-      }
-    }
+    //console.log(searchSpecs);
+    //console.log(this.SensorDataMap);
+
+    var newArray=this.SensorDataMap.get(searchSpecs.sensorId);
+    var timestamp1=searchSpecs.timestamp;
+    var id1=searchSpecs.sensorId;
+    var min1=this.SensorMap.get(id1)["expected"]["min"];
+    var max1=this.SensorMap.get(id1)["expected"]["max"];
     var count = searchSpecs.count;
-    var tempMap;
-    if (searchSpecs.sensorId != null) {
-      count = 1;
-      tempMap = new Map();
-      if(this.SensorDataMap.get(searchSpecs.sensorId)!=null)
-        tempMap.set(searchSpecs.id, this.SensorDataMap.get(searchSpecs.sensorId));
-    } else
-        tempMap = this.SensorDataMap;
-    var indexCount = 0;
-    for (let [k, v] of tempMap) {
-      if(count===0)
-        break;
-      if(indexCount>=searchSpecs.index)
-      {  
-        indexCount++;
-        var flag = 0;
-        for(var ex in example)
+
+    newArray.sort(function (a, b) {
+      return b.timestamp - a.timestamp;
+    });
+    //console.log(newArray);
+    var dataRes = [];
+    for(var j in newArray)
+    {
+        if(count<=0)
+          break;
+        if(newArray[j].timestamp>timestamp1)
         {
-          if(v[ex] != example[ex])
-            flag=1;
+          continue;
         }
-        if(flag==0)
+        var status1 = calculateStatus(min1, max1, newArray[j].value);
+        if(searchSpecs.statuses.has(status1))
         {
-          outputArray.push(v);
           count--;
+          var element = {
+             timestamp : newArray[j].timestamp,
+             value : newArray[j].value,
+             status : status1
+          };
+          dataRes.push(element);
         }
-      }
     }
-    if (indexCount >= this.SensorDataMap.size) 
-      indexCount = -1;
-    var json = {};
-    json["nextIndex"] = indexCount;
-    json["data"] = outputArray;
-    return json;
+    var result = {"data" : dataRes};
+    if(searchSpecs.doDetail==="true")
+    {
+      var sens = this.SensorMap.get(searchSpecs.sensorId);
+      var type = this.SensorTypeMap.get(sens.model);
+      result.sensor = sens;
+      result.sensorType = type;
+    }
+    return result;
   }
+
+  
   
   
 }
 
 module.exports = Sensors;
+
+function calculateStatus(min, max, val){
+  if(val<min)
+    return "error";
+  else if(val>max)
+    return "outOfRange";
+  else
+    return "ok";
+}
 
 //@TODO add auxiliary functions as necessary
 
