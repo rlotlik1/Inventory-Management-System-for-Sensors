@@ -25,6 +25,9 @@ class Sensors {
     {
       console.log("Connected");
     }
+    else{
+      console.log("Error in connection");
+    }
     return new Sensors(base,client,dbase);    
   }
 
@@ -142,23 +145,28 @@ class Sensors {
    */
   async addSensorData(info) {
     const sensorData = validate('addSensorData', info);
-    //@TODO
 
     var checkData=await this.sensorData.findOne({_id:sensorData.sensorId});
 
     if(!checkData)
     {
-      for(const [k,v] of Object.entries(COLLECTIONSD))
-      {
-        await this[k].insertOne({_id:sensorData.sensorId,sensorData});
-      }
+        
+        let sensorD = new Array(sensorData);
+      
+        for(const [k,v] of Object.entries(COLLECTIONSD))
+        {
+          
+        await this[k].insertOne({_id:sensorData.sensorId,sensorD});
+        }
     }
     else{
+        let sensorD = checkData.sensorD;
+        sensorD.push(sensorData);
 
-      for(const [k,v] of Object.entries(COLLECTIONSD))
-      {
-        await this[k].updateOne({_id:sensorData.sensorId},{$set:{sensorData}});
-      }
+        for(const [k,v] of Object.entries(COLLECTIONSD))
+        {
+        await this[k].updateOne({_id:sensorData.sensorId},{$set:{sensorD}});
+        }
     }
   }
 
@@ -300,6 +308,12 @@ class Sensors {
       if(key==="_doDetail" && searchSpecs._doDetail==="true")
       {
         var searchType=await this.sensorType.findOne({'sensorType.id' : search[0]["sensor"]["model"]});
+
+        if(!searchType)
+        {
+          const err="no model ${model} sensor type";
+          throw [ new AppError('searchSpecs.model', err) ];
+        }
       }
     }
 
@@ -344,43 +358,70 @@ class Sensors {
    *  All user errors must be thrown as an array of AppError's.
    */
   async findSensorData(info) {
-    //@TODO
     const searchSpecs = validate('findSensorData', info);
-    console.log(searchSpecs);
-    var example={};
-    for(var key in searchSpecs)
+    //@TODO
+    //console.log(searchSpecs);
+    //console.log(this.SensorDataMap);
+    var timestamp1=searchSpecs.timestamp;
+    var id1=searchSpecs.sensorId;
+    var sdata=await this.sensorData.findOne({_id:id1});
+ //console.log(sdata);
+    var newArray=sdata.sensorD;
+    var sens=await this.sensor.findOne({_id:id1});
+ //console.log(sens);
+    var min1=Number(sens.sensor.expected.min);
+    var max1=Number(sens.sensor.expected.max);
+    var count = searchSpecs._count;
+
+    newArray.sort(function (a, b) {
+      return b.timestamp - a.timestamp;
+    });
+    //console.log(newArray);
+    var dataRes = [];
+    for(var j in newArray)
     {
-      console.log(key);
-      if(!(key==="_count"))
-      {
-        if(key==="id")
+        if(count<=0)
+          break;
+        if(newArray[j].timestamp>timestamp1)
         {
-          if(searchSpecs.sensorId!==null)
-            example[key]=searchSpecs[key];
+          continue;
         }
-        else
-          example[key]=searchSpecs[key];
-      }
+        var status1 = calculateStatus(min1, max1, newArray[j].value);
+        if(searchSpecs.statuses.has(status1))
+        {
+          count--;
+          var element = {
+             timestamp : newArray[j].timestamp,
+             value : newArray[j].value,
+             status : status1
+          };
+          dataRes.push(element);
+        }
     }
-    var sr = {};
-    for(const key in example)
+    var result = {"data" : dataRes};
+    if(searchSpecs._doDetail==="true")
     {
-      var k = "sensorData."+key;
-      sr[k] = example[key];
+      var stype=await this.sensorType.findOne({_id:sens.sensor.model});
+      //console.log(stype);
+      result.sensor = sens.sensor;
+      result.sensorType = stype.sensorType;
     }
-    var counting= await this.sensorData.find(sr).count();
-    console.log(counting);
-    var search=await this.sensorData.find(sr).limit(searchSpecs._count).toArray();
-
-    return { data: [search], nextIndex:  counting>searchSpecs._index+searchSpecs._count?searchSpecs._index+searchSpecs._count:-1};
-  
+    return result;
   }
-
   
   
 } //class Sensors
 
 module.exports = Sensors.newSensors;
+
+function calculateStatus(min, max, val){
+  if(val<min)
+    return "outOfRange";
+  else if(val>max)
+    return "error";
+  else
+    return "ok";
+}
 
 const COLLECTIONST={
   sensorType:'sensorT'
