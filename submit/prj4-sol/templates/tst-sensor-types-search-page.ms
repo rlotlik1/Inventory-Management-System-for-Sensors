@@ -53,8 +53,8 @@
   <table class="summary">
         <thead>
     	   <tr>
-                  <th>Manufacturer</th>
                   <th>Sensor Type ID</th>
+                  <th>Manufacturer</th>
                   <th>Model Number</th>
                   <th>Measure</th>
                   <th colspan="2">Limits</th>

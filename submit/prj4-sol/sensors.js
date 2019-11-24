@@ -240,6 +240,7 @@ function doSearch(app, formId) {
     const search = getNonEmptyValues(req.body);
     //console.log(search);
     if (isSubmit) {
+      console.log("hii");
       if (search["measure"] === "Select") {
         delete search["measure"];
       }
@@ -258,6 +259,8 @@ function doSearch(app, formId) {
         let value = values[i].split("=");
         data[value[0]] = value[1];
       }
+
+      console.log(data);
 
       try {
         const r = await app.locals.model.list('sensor-types', data);
@@ -279,6 +282,13 @@ function doSearch(app, formId) {
           r["prev"] = prev;
           console.log(prev);
         }
+        const model = {
+          base: app.locals.base,
+          fields: FIELDS,
+          result: r
+        };
+        const html = mustache.render(formId, model);
+        res.send(html);
 
       } catch (err) {
         //console.error(err);
@@ -435,7 +445,7 @@ function createUser(app, formId) {
 
     }
     console.log(user);
-    if (errors === {}) {
+    if (Object.keys(errors).length === 0) {
       await app.locals.model.update('sensor-types', user);
 
       res.redirect(`${app.locals.base}/search-sensor-type.html?id=` + user.id);

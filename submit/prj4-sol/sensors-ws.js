@@ -41,7 +41,8 @@ const URLS = {
 SensorsWs.prototype.list = async function(type, q = {}) {
   try {
     const url = URLS[type].call(null, this, q);
-    //console.log(url);
+    console.log(q);
+    console.log(url);
     const response = await axios.get(url, { params: q });
     return response.data;
   }
